@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Photo sphere with three.js</title>
+	<title>Photo sphere viewer</title>
 	<style>
 		body { margin: 0; overflow: hidden; background-color: #000; }
 		.tm  { position: absolute; top: 10px; right: 10px; }
@@ -9,10 +9,7 @@
 </head>
 <body>
 	<div id="sphere"></div>
-	<a href="http://thematicmapping.org/" target="parent" class="tm">
-		<img src="http://thematicmapping.org/img/thematicmapping.png">
-	</a>	
-	<script src="http://threejs.org/build/three.min.js"></script>
+	<script src="js/three.min.js"></script>
 	<script src="js/OrbitControls.js"></script>	
 	<script src="js/Detector.js"></script>		
 	<script>
@@ -33,7 +30,7 @@
 		var sphere = new THREE.Mesh(
 			new THREE.SphereGeometry(100, 20, 20),
 			new THREE.MeshBasicMaterial({
-				map: THREE.ImageUtils.loadTexture('bergsjostolen.jpg')
+				map: THREE.ImageUtils.loadTexture('<?=basename($_GET['i'])?>.jpg')
 			})
 		);
 		sphere.scale.x = -1;
@@ -42,8 +39,8 @@
 		var controls = new THREE.OrbitControls(camera);
 		controls.noPan = true;
 		controls.noZoom = true; 
-		controls.autoRotate = true;
-		controls.autoRotateSpeed = 0.5;
+		controls.autoRotate = 2;
+		controls.autoRotateSpeed = 0.2;
 
 		webglEl.appendChild(renderer.domElement);
 
