@@ -53,8 +53,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 	this.noPan = false;
 	this.keyPanSpeed = 7.0;	// pixels moved per arrow key push
 
-	// Set to true to automatically rotate around the target
-	this.autoRotate = false;
+	// Set to 1 to automatically rotate around the target
+	// Set to 2 to automatically rotate, but stop after manual pan
+	this.autoRotate = 0;
 	this.autoRotateSpeed = 2.0; // 30 seconds per round when fps is 60
 
 	// How far you can orbit vertically, upper and lower limits.
@@ -73,6 +74,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 	var scope = this;
 
 	var EPS = 0.000001;
+
+    // mouse movement speed
+    this.speedX = 0;
+    this.speedY = 0;
 
 	var rotateStart = new THREE.Vector2();
 	var rotateEnd = new THREE.Vector2();
@@ -103,25 +108,13 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	this.rotateLeft = function ( angle ) {
 
-		if ( angle === undefined ) {
-
-			angle = getAutoRotationAngle();
-
-		}
-
-		thetaDelta -= angle;
+		thetaDelta += angle;
 
 	};
 
 	this.rotateUp = function ( angle ) {
 
-		if ( angle === undefined ) {
-
-			angle = getAutoRotationAngle();
-
-		}
-
-		phiDelta -= angle;
+		phiDelta += angle;
 
 	};
 
@@ -221,9 +214,17 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		var phi = Math.atan2( Math.sqrt( offset.x * offset.x + offset.z * offset.z ), offset.y );
 
-		if ( this.autoRotate ) {
+		if ( this.autoRotate > 0 ) {
 
-			this.rotateLeft( getAutoRotationAngle() );
+            if ( rotateDelta.x == 0 && rotateDelta.y == 0 ) {
+                rotateDelta.x = 2;
+            }
+
+			// rotating across whole screen goes 360 degrees around
+            var element = this.domElement === document ? this.domElement.body : this.domElement;
+			this.rotateLeft( 2 * Math.PI * rotateDelta.x / element.clientWidth * this.autoRotateSpeed );
+			// rotating up and down along whole screen attempts to go 360, but limited to 180
+			this.rotateUp( 2 * Math.PI * rotateDelta.y / element.clientHeight * this.autoRotateSpeed );
 
 		}
 
@@ -268,12 +269,6 @@ THREE.OrbitControls = function ( object, domElement ) {
 	};
 
 
-	function getAutoRotationAngle() {
-
-		return 2 * Math.PI / 60 / 60 * scope.autoRotateSpeed;
-
-	}
-
 	function getZoomScale() {
 
 		return Math.pow( 0.95, scope.zoomSpeed );
@@ -284,6 +279,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		if ( scope.enabled === false ) { return; }
 		event.preventDefault();
+
+        scope.speedX = scope.speedY = 0;
+
+        if (scope.autoRotate == 2) scope.autoRotate = -1;
 
 		if ( event.button === 0 ) {
 			if ( scope.noRotate === true ) { return; }
@@ -313,6 +312,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 		scope.domElement.addEventListener( 'mouseup', onMouseUp, false );
 
 	}
+
+    var timestamp = null;
+    var lastMouseX = null;
+    var lastMouseY = null;
 
 	function onMouseMove( event ) {
 
@@ -371,11 +374,35 @@ THREE.OrbitControls = function ( object, domElement ) {
 		// Greggman fix: https://github.com/greggman/three.js/commit/fde9f9917d6d8381f06bf22cdff766029d1761be
 		scope.update();
 
+        // track mouse speed
+        if (timestamp === null) {
+            timestamp = Date.now();
+            lastMouseX = event.screenX;
+            lastMouseY = event.screenY;
+            return;
+        }
+
+        var now = Date.now();
+        var dt =  now - timestamp;
+        var dx = event.screenX - lastMouseX;
+        var dy = event.screenY - lastMouseY;
+        scope.speedX = Math.round(dx / dt * 100);
+        scope.speedY = Math.round(dy / dt * 100);
+
+        timestamp = now;
+        lastMouseX = event.screenX;
+        lastMouseY = event.screenY;
+
 	}
 
 	function onMouseUp( /* event */ ) {
 
 		if ( scope.enabled === false ) return;
+
+        if ( scope.autoRotate == -1 && ( Math.abs(scope.speedX) > 10 || Math.abs(scope.speedY) > 10) )
+        {
+            scope.autoRotate = 2;
+        }
 
 		// Greggman fix: https://github.com/greggman/three.js/commit/fde9f9917d6d8381f06bf22cdff766029d1761be
 		scope.domElement.removeEventListener( 'mousemove', onMouseMove, false );
